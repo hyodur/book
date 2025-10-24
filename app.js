@@ -198,6 +198,23 @@ class LibraryManager {
         return loan;
     }
 
+    deleteLoan(bookId) {
+        const loanIndex = this.loans.findIndex(loan => loan.bookId === bookId);
+        if (loanIndex === -1) throw new Error('대출 기록을 찾을 수 없습니다.');
+
+        // 대출 목록에서 제거 (이력에 남기지 않음)
+        this.loans.splice(loanIndex, 1);
+
+        // 책 상태를 대출 가능으로 변경
+        const book = this.getBook(bookId);
+        if (book) {
+            book.status = 'available';
+        }
+
+        this.saveData('loans', this.loans);
+        this.saveData('books', this.books);
+    }
+
     getLoanByBookId(bookId) {
         return this.loans.find(loan => loan.bookId === bookId);
     }
@@ -571,6 +588,9 @@ class UIManager {
                     <div class="book-actions">
                         <button class="btn btn-success btn-small" onclick="ui.handleReturnBook('${book.id}')">
                             반납하기
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="ui.handleDeleteLoan('${book.id}')">
+                            삭제
                         </button>
                     </div>
                 </div>
@@ -1011,9 +1031,14 @@ class UIManager {
                                 ` (D-${daysUntilDue})`
                             }
                         </div>
-                        <span class="history-status ${isOverdue ? 'overdue' : 'current'}">
-                            ${isOverdue ? '⚠️ 연체 중' : '📖 대출 중'}
-                        </span>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px;">
+                            <span class="history-status ${isOverdue ? 'overdue' : 'current'}">
+                                ${isOverdue ? '⚠️ 연체 중' : '📖 대출 중'}
+                            </span>
+                            <button class="btn btn-danger btn-small" onclick="ui.handleDeleteLoan('${book.id}'); ui.showStudentHistory('${studentId}');">
+                                삭제
+                            </button>
+                        </div>
                     </div>
                 `;
             });
@@ -1127,6 +1152,29 @@ class UIManager {
             this.library.returnBook(bookId);
             this.render();
             this.showNotification('반납이 완료되었습니다.', 'success');
+        } catch (error) {
+            this.showNotification(error.message, 'error');
+        }
+    }
+
+    handleDeleteLoan(bookId) {
+        const loan = this.library.getLoanByBookId(bookId);
+        if (!loan) {
+            this.showNotification('대출 기록을 찾을 수 없습니다.', 'error');
+            return;
+        }
+
+        const book = this.library.getBook(bookId);
+        const student = this.library.getStudent(loan.studentId);
+
+        if (!confirm(`정말 이 대출 기록을 삭제하시겠습니까?\n\n📚 ${book.title}\n👤 ${student.number}번 ${student.name}\n\n⚠️ 이 작업은 되돌릴 수 없으며, 대출 이력에도 남지 않습니다.`)) {
+            return;
+        }
+
+        try {
+            this.library.deleteLoan(bookId);
+            this.render();
+            this.showNotification('대출 기록이 삭제되었습니다.', 'success');
         } catch (error) {
             this.showNotification(error.message, 'error');
         }
