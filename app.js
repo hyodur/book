@@ -916,12 +916,19 @@ class UIManager {
         this.selectedBookForLoan = bookId;
         const book = this.library.getBook(bookId);
         
+        console.log('[모달 열기] 책:', book.title);
+        
         // 책 정보 표시
         document.getElementById('loan-book-info').innerHTML = `
             <h3>${book.title}</h3>
             <p><strong>저자:</strong> ${book.author || '저자 미상'}</p>
             <p><strong>도서번호:</strong> ${book.id}</p>
         `;
+
+        // 경고 박스 초기화 (먼저!)
+        const alertBox = document.getElementById('student-history-alert');
+        alertBox.style.display = 'none';
+        alertBox.innerHTML = '';
 
         // 학생 목록 채우기
         const studentSelect = document.getElementById('loan-student');
@@ -933,6 +940,8 @@ class UIManager {
         // 학생 목록을 번호순으로 정렬
         const sortedStudents = [...this.library.students].sort((a, b) => a.number - b.number);
         
+        console.log('[모달 열기] 학생 목록:', sortedStudents.map(s => `${s.number}번 ${s.name}`));
+        
         newStudentSelect.innerHTML = '<option value="">학생을 선택하세요</option>' +
             sortedStudents.map(student => 
                 `<option value="${student.id}">${student.number}번 ${student.name}</option>`
@@ -940,15 +949,14 @@ class UIManager {
 
         // 학생 선택 이벤트 리스너 (새로운 요소에 추가)
         newStudentSelect.addEventListener('change', (e) => {
-            this.checkStudentBookHistory(e.target.value, bookId);
+            const selectedId = e.target.value;
+            console.log('[드롭다운 변경] 선택된 ID:', selectedId);
+            this.checkStudentBookHistory(selectedId, bookId);
         });
 
         // required 속성 복원
         newStudentSelect.required = true;
         newStudentSelect.id = 'loan-student';
-
-        // 경고 박스 초기화
-        document.getElementById('student-history-alert').style.display = 'none';
 
         // 모달 표시
         document.getElementById('loan-modal').style.display = 'block';
@@ -957,6 +965,8 @@ class UIManager {
     checkStudentBookHistory(studentId, bookId) {
         const alertBox = document.getElementById('student-history-alert');
         
+        console.log('[경고박스] 체크 시작 - studentId:', studentId);
+        
         if (!studentId) {
             alertBox.style.display = 'none';
             return;
@@ -964,6 +974,14 @@ class UIManager {
 
         const student = this.library.getStudent(studentId);
         const book = this.library.getBook(bookId);
+        
+        console.log('[경고박스] 찾은 학생:', student ? `${student.number}번 ${student.name}` : 'null');
+        
+        if (!student) {
+            alertBox.style.display = 'none';
+            return;
+        }
+        
         const borrowHistory = this.library.hasStudentBorrowedBook(studentId, bookId);
 
         if (borrowHistory.current) {
@@ -971,7 +989,7 @@ class UIManager {
             alertBox.className = 'alert-box danger';
             alertBox.innerHTML = `
                 <strong>⚠️ 중복 대출 불가</strong>
-                ${student.name} 학생이 현재 이 책을 대출 중입니다!
+                ${student.number}번 ${student.name} 학생이 현재 이 책을 대출 중입니다!
             `;
             alertBox.style.display = 'block';
         } else if (borrowHistory.history) {
@@ -979,7 +997,7 @@ class UIManager {
             alertBox.className = 'alert-box warning';
             alertBox.innerHTML = `
                 <strong>📚 대출 이력 있음</strong>
-                ${student.name} 학생이 이 책을 이전에 빌린 적이 있습니다.
+                ${student.number}번 ${student.name} 학생이 이 책을 이전에 빌린 적이 있습니다.
             `;
             alertBox.style.display = 'block';
         } else {
@@ -987,7 +1005,7 @@ class UIManager {
             alertBox.className = 'alert-box info';
             alertBox.innerHTML = `
                 <strong>✨ 첫 대출</strong>
-                ${student.name} 학생이 이 책을 처음 빌립니다.
+                ${student.number}번 ${student.name} 학생이 이 책을 처음 빌립니다.
             `;
             alertBox.style.display = 'block';
         }
