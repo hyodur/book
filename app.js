@@ -1146,16 +1146,29 @@ class UIManager {
         }
 
         try {
+            // 대출 처리 전에 학생 정보 다시 확인
+            console.log('대출 처리 직전 - 학생:', student.number, student.name);
+            console.log('대출 처리 직전 - 책:', book.title);
+            
             this.library.loanBook(this.selectedBookForLoan, studentId, days, note);
             
-            const message = borrowHistory.history 
-                ? `대출 완료!\n${student.number}번 ${student.name} 학생 (재대출)`
-                : `대출 완료!\n${student.number}번 ${student.name} 학생`;
+            // 대출 처리 후 다시 학생 정보 가져오기
+            const confirmedStudent = this.library.getStudent(studentId);
+            console.log('대출 처리 후 - 학생:', confirmedStudent.number, confirmedStudent.name);
             
-            this.showNotification(message, 'success');
+            const message = borrowHistory.history 
+                ? `✅ 대출 완료!\n\n📚 ${book.title}\n👤 ${confirmedStudent.number}번 ${confirmedStudent.name} (재대출)`
+                : `✅ 대출 완료!\n\n📚 ${book.title}\n👤 ${confirmedStudent.number}번 ${confirmedStudent.name}`;
+            
             this.closeModal();
             this.render();
+            
+            // 렌더링 후 알림 (렌더링이 완료된 후에 알림 표시)
+            setTimeout(() => {
+                this.showNotification(message, 'success');
+            }, 100);
         } catch (error) {
+            console.error('대출 처리 오류:', error);
             this.showNotification(error.message, 'error');
         }
     }
