@@ -1134,60 +1134,76 @@ class UIManager {
 
         // 디버깅: 선택된 옵션 확인
         const selectedOption = studentSelect.options[studentSelect.selectedIndex];
-        console.log('=== 대출 정보 ===');
+        console.log('==========================================');
+        console.log('=== 대출 처리 시작 ===');
         console.log('선택된 studentId:', studentId);
         console.log('선택된 옵션 텍스트:', selectedOption ? selectedOption.text : 'none');
         console.log('selectedIndex:', studentSelect.selectedIndex);
+        console.log('전체 학생 목록:');
+        this.library.students.forEach(s => {
+            console.log(`  - ID: ${s.id}, 번호: ${s.number}, 이름: ${s.name}`);
+        });
 
-        if (!studentId) {
-            this.showNotification('학생을 선택해주세요.', 'error');
+        if (!studentId || studentId === '') {
+            alert('학생을 선택해주세요.');
             return;
         }
 
         const student = this.library.getStudent(studentId);
         const book = this.library.getBook(this.selectedBookForLoan);
         
-        console.log('찾은 학생 정보:', student);
+        console.log('>>> 찾은 학생 정보:');
+        console.log('   ID:', student ? student.id : 'null');
+        console.log('   번호:', student ? student.number : 'null');
+        console.log('   이름:', student ? student.name : 'null');
         
         if (!student) {
-            this.showNotification('학생 정보를 찾을 수 없습니다.', 'error');
-            console.error('학생을 찾을 수 없음. ID:', studentId);
-            console.error('현재 학생 목록:', this.library.students);
+            alert('학생 정보를 찾을 수 없습니다.\n개발자 콘솔을 확인해주세요.');
+            console.error('!!! 학생을 찾을 수 없음. ID:', studentId);
+            console.error('!!! 현재 학생 목록:', this.library.students);
             return;
         }
 
         // 중복 대출 체크
         const borrowHistory = this.library.hasStudentBorrowedBook(studentId, this.selectedBookForLoan);
         if (borrowHistory.current) {
-            this.showNotification(`${student.number}번 ${student.name} 학생이 이미 대출 중인 책입니다!`, 'error');
+            alert(`${student.number}번 ${student.name} 학생이 이미 대출 중인 책입니다!`);
             return;
         }
 
         try {
-            // 대출 처리 전에 학생 정보 다시 확인
-            console.log('대출 처리 직전 - 학생:', student.number, student.name);
-            console.log('대출 처리 직전 - 책:', book.title);
+            console.log('>>> 대출 처리 직전:');
+            console.log('   학생:', student.number, student.name);
+            console.log('   학생ID:', studentId);
+            console.log('   책:', book.title);
+            console.log('   책ID:', this.selectedBookForLoan);
             
             this.library.loanBook(this.selectedBookForLoan, studentId, days, note);
             
-            // 대출 처리 후 다시 학생 정보 가져오기
-            const confirmedStudent = this.library.getStudent(studentId);
-            console.log('대출 처리 후 - 학생:', confirmedStudent.number, confirmedStudent.name);
+            // 대출 처리 후 확인
+            const loan = this.library.getLoanByBookId(this.selectedBookForLoan);
+            console.log('>>> 대출 처리 완료 - 저장된 대출 정보:');
+            console.log('   대출 레코드:', loan);
             
-            const message = borrowHistory.history 
-                ? `✅ 대출 완료!\n\n📚 ${book.title}\n👤 ${confirmedStudent.number}번 ${confirmedStudent.name} (재대출)`
-                : `✅ 대출 완료!\n\n📚 ${book.title}\n👤 ${confirmedStudent.number}번 ${confirmedStudent.name}`;
-            
-            this.closeModal();
-            this.render();
-            
-            // 렌더링 후 알림 (렌더링이 완료된 후에 알림 표시)
-            setTimeout(() => {
-                this.showNotification(message, 'success');
-            }, 100);
+            if (loan) {
+                const loanedStudent = this.library.getStudent(loan.studentId);
+                console.log('   대출된 학생:', loanedStudent);
+                
+                const message = `✅ 대출 완료!\n\n📚 ${book.title}\n👤 ${loanedStudent.number}번 ${loanedStudent.name}`;
+                
+                console.log('>>> 알림 메시지:', message);
+                console.log('==========================================');
+                
+                this.closeModal();
+                this.render();
+                
+                setTimeout(() => {
+                    alert(message);
+                }, 100);
+            }
         } catch (error) {
-            console.error('대출 처리 오류:', error);
-            this.showNotification(error.message, 'error');
+            console.error('!!! 대출 처리 오류:', error);
+            alert('오류: ' + error.message);
         }
     }
 
