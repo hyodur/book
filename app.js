@@ -930,8 +930,11 @@ class UIManager {
         const newStudentSelect = studentSelect.cloneNode(false);
         studentSelect.parentNode.replaceChild(newStudentSelect, studentSelect);
         
+        // 학생 목록을 번호순으로 정렬
+        const sortedStudents = [...this.library.students].sort((a, b) => a.number - b.number);
+        
         newStudentSelect.innerHTML = '<option value="">학생을 선택하세요</option>' +
-            this.library.students.map(student => 
+            sortedStudents.map(student => 
                 `<option value="${student.id}">${student.number}번 ${student.name}</option>`
             ).join('');
 
@@ -1106,9 +1109,17 @@ class UIManager {
     }
 
     handleLoanBook() {
-        const studentId = document.getElementById('loan-student').value;
+        const studentSelect = document.getElementById('loan-student');
+        const studentId = studentSelect.value;
         const days = parseInt(document.getElementById('loan-days').value);
         const note = document.getElementById('loan-note').value.trim();
+
+        // 디버깅: 선택된 옵션 확인
+        const selectedOption = studentSelect.options[studentSelect.selectedIndex];
+        console.log('=== 대출 정보 ===');
+        console.log('선택된 studentId:', studentId);
+        console.log('선택된 옵션 텍스트:', selectedOption ? selectedOption.text : 'none');
+        console.log('selectedIndex:', studentSelect.selectedIndex);
 
         if (!studentId) {
             this.showNotification('학생을 선택해주세요.', 'error');
@@ -1118,8 +1129,12 @@ class UIManager {
         const student = this.library.getStudent(studentId);
         const book = this.library.getBook(this.selectedBookForLoan);
         
+        console.log('찾은 학생 정보:', student);
+        
         if (!student) {
             this.showNotification('학생 정보를 찾을 수 없습니다.', 'error');
+            console.error('학생을 찾을 수 없음. ID:', studentId);
+            console.error('현재 학생 목록:', this.library.students);
             return;
         }
 
