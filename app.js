@@ -905,15 +905,24 @@ class UIManager {
 
         // 학생 목록 채우기
         const studentSelect = document.getElementById('loan-student');
-        studentSelect.innerHTML = '<option value="">학생을 선택하세요</option>' +
+        
+        // 기존 이벤트 리스너 제거를 위해 복제본으로 교체
+        const newStudentSelect = studentSelect.cloneNode(false);
+        studentSelect.parentNode.replaceChild(newStudentSelect, studentSelect);
+        
+        newStudentSelect.innerHTML = '<option value="">학생을 선택하세요</option>' +
             this.library.students.map(student => 
                 `<option value="${student.id}">${student.number}번 ${student.name}</option>`
             ).join('');
 
-        // 학생 선택 이벤트 리스너
-        studentSelect.addEventListener('change', (e) => {
+        // 학생 선택 이벤트 리스너 (새로운 요소에 추가)
+        newStudentSelect.addEventListener('change', (e) => {
             this.checkStudentBookHistory(e.target.value, bookId);
         });
+
+        // required 속성 복원
+        newStudentSelect.required = true;
+        newStudentSelect.id = 'loan-student';
 
         // 경고 박스 초기화
         document.getElementById('student-history-alert').style.display = 'none';
@@ -1081,25 +1090,31 @@ class UIManager {
             return;
         }
 
+        const student = this.library.getStudent(studentId);
+        const book = this.library.getBook(this.selectedBookForLoan);
+        
+        if (!student) {
+            this.showNotification('학생 정보를 찾을 수 없습니다.', 'error');
+            return;
+        }
+
         // 중복 대출 체크
         const borrowHistory = this.library.hasStudentBorrowedBook(studentId, this.selectedBookForLoan);
         if (borrowHistory.current) {
-            this.showNotification('이미 대출 중인 책입니다!', 'error');
+            this.showNotification(`${student.number}번 ${student.name} 학생이 이미 대출 중인 책입니다!`, 'error');
             return;
         }
 
         try {
             this.library.loanBook(this.selectedBookForLoan, studentId, days, note);
-            this.closeModal();
-            this.render();
             
-            const student = this.library.getStudent(studentId);
-            const book = this.library.getBook(this.selectedBookForLoan);
             const message = borrowHistory.history 
-                ? `대출이 완료되었습니다.\n(${student.name} 학생이 이 책을 재대출했습니다)`
-                : '대출이 완료되었습니다.';
+                ? `대출 완료!\n${student.number}번 ${student.name} 학생 (재대출)`
+                : `대출 완료!\n${student.number}번 ${student.name} 학생`;
             
             this.showNotification(message, 'success');
+            this.closeModal();
+            this.render();
         } catch (error) {
             this.showNotification(error.message, 'error');
         }
