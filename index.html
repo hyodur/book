@@ -250,7 +250,7 @@
     <!-- 대출 모달 -->
     <div id="loan-modal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
+            <span class="close" onclick="ui.closeModal()">&times;</span>
             <h2>📖 책 대출하기</h2>
             <div id="loan-book-info" class="book-info"></div>
             <form id="loan-form" class="form">
@@ -260,6 +260,7 @@
                         <option value="">학생을 선택하세요</option>
                     </select>
                 </div>
+                <div id="student-history-alert" class="alert-box" style="display: none;"></div>
                 <div class="form-group">
                     <label for="loan-days">대출 기간 (일)</label>
                     <input type="number" id="loan-days" value="14" min="1" max="90">
@@ -270,6 +271,16 @@
                 </div>
                 <button type="submit" class="btn btn-primary">대출하기</button>
             </form>
+        </div>
+    </div>
+
+    <!-- 학생 대출 이력 모달 -->
+    <div id="student-history-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="ui.closeStudentHistoryModal()">&times;</span>
+            <h2>📚 학생 대출 이력</h2>
+            <div id="student-history-info" class="student-history-info"></div>
+            <div id="student-history-content" class="student-history-content"></div>
         </div>
     </div>
 

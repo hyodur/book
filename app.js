@@ -206,6 +206,33 @@ class LibraryManager {
         return this.loans.filter(loan => loan.studentId === studentId);
     }
 
+    getStudentLoanHistory(studentId) {
+        // 현재 대출 중인 책
+        const currentLoans = this.loans.filter(loan => loan.studentId === studentId);
+        
+        // 반납한 책 이력
+        const history = this.loanHistory.filter(loan => loan.studentId === studentId);
+        
+        return {
+            current: currentLoans,
+            history: history,
+            all: [...currentLoans, ...history]
+        };
+    }
+
+    hasStudentBorrowedBook(studentId, bookId) {
+        // 현재 대출 중이거나 과거에 빌린 적이 있는지 확인
+        const currentLoan = this.loans.some(loan => 
+            loan.studentId === studentId && loan.bookId === bookId
+        );
+        
+        const historyLoan = this.loanHistory.some(loan => 
+            loan.studentId === studentId && loan.bookId === bookId
+        );
+        
+        return { current: currentLoan, history: historyLoan };
+    }
+
     isOverdue(dueDate) {
         return new Date(dueDate) < new Date();
     }
@@ -420,9 +447,14 @@ class UIManager {
         });
 
         window.addEventListener('click', (e) => {
-            const modal = document.getElementById('loan-modal');
-            if (e.target === modal) {
+            const loanModal = document.getElementById('loan-modal');
+            const historyModal = document.getElementById('student-history-modal');
+            
+            if (e.target === loanModal) {
                 this.closeModal();
+            }
+            if (e.target === historyModal) {
+                this.closeStudentHistoryModal();
             }
         });
 
@@ -588,7 +620,11 @@ class UIManager {
             return `
                 <tr>
                     <td>${student.number}</td>
-                    <td>${student.name}</td>
+                    <td>
+                        <span class="student-name-link" onclick="ui.showStudentHistory('${student.id}')">
+                            ${student.name}
+                        </span>
+                    </td>
                     <td>${loanCount}권</td>
                     <td>
                         <button class="btn btn-danger btn-small" 
@@ -874,13 +910,164 @@ class UIManager {
                 `<option value="${student.id}">${student.number}번 ${student.name}</option>`
             ).join('');
 
+        // 학생 선택 이벤트 리스너
+        studentSelect.addEventListener('change', (e) => {
+            this.checkStudentBookHistory(e.target.value, bookId);
+        });
+
+        // 경고 박스 초기화
+        document.getElementById('student-history-alert').style.display = 'none';
+
         // 모달 표시
         document.getElementById('loan-modal').style.display = 'block';
+    }
+
+    checkStudentBookHistory(studentId, bookId) {
+        const alertBox = document.getElementById('student-history-alert');
+        
+        if (!studentId) {
+            alertBox.style.display = 'none';
+            return;
+        }
+
+        const student = this.library.getStudent(studentId);
+        const book = this.library.getBook(bookId);
+        const borrowHistory = this.library.hasStudentBorrowedBook(studentId, bookId);
+
+        if (borrowHistory.current) {
+            // 현재 대출 중
+            alertBox.className = 'alert-box danger';
+            alertBox.innerHTML = `
+                <strong>⚠️ 중복 대출 불가</strong>
+                ${student.name} 학생이 현재 이 책을 대출 중입니다!
+            `;
+            alertBox.style.display = 'block';
+        } else if (borrowHistory.history) {
+            // 과거에 빌린 적 있음
+            alertBox.className = 'alert-box warning';
+            alertBox.innerHTML = `
+                <strong>📚 대출 이력 있음</strong>
+                ${student.name} 학생이 이 책을 이전에 빌린 적이 있습니다.
+            `;
+            alertBox.style.display = 'block';
+        } else {
+            // 처음 빌리는 책
+            alertBox.className = 'alert-box info';
+            alertBox.innerHTML = `
+                <strong>✨ 첫 대출</strong>
+                ${student.name} 학생이 이 책을 처음 빌립니다.
+            `;
+            alertBox.style.display = 'block';
+        }
+    }
+
+    showStudentHistory(studentId) {
+        const student = this.library.getStudent(studentId);
+        if (!student) return;
+
+        const history = this.library.getStudentLoanHistory(studentId);
+        
+        // 학생 정보 표시
+        document.getElementById('student-history-info').innerHTML = `
+            <h3>${student.number}번 ${student.name}</h3>
+            <p>총 대출 횟수: ${history.all.length}권 (현재 ${history.current.length}권 대출 중)</p>
+        `;
+
+        let contentHTML = '';
+
+        // 현재 대출 중인 책
+        if (history.current.length > 0) {
+            contentHTML += `
+                <div class="history-section">
+                    <h3>📕 현재 대출 중 (${history.current.length}권)</h3>
+                    <div class="history-list">
+            `;
+
+            history.current.forEach(loan => {
+                const book = this.library.getBook(loan.bookId);
+                const isOverdue = this.library.isOverdue(loan.dueDate);
+                const daysUntilDue = this.library.getDaysUntilDue(loan.dueDate);
+
+                contentHTML += `
+                    <div class="history-item ${isOverdue ? 'overdue' : 'current'}">
+                        <div class="history-book-title">
+                            ${book.title}
+                            <span class="history-book-id">${book.id}</span>
+                        </div>
+                        <div class="history-dates">
+                            📅 대출일: ${this.formatDate(loan.loanDate)}<br>
+                            📅 반납 예정: ${this.formatDate(loan.dueDate)}
+                            ${isOverdue ? 
+                                ` <strong style="color: var(--danger-color);">(${Math.abs(daysUntilDue)}일 연체)</strong>` :
+                                ` (D-${daysUntilDue})`
+                            }
+                        </div>
+                        <span class="history-status ${isOverdue ? 'overdue' : 'current'}">
+                            ${isOverdue ? '⚠️ 연체 중' : '📖 대출 중'}
+                        </span>
+                    </div>
+                `;
+            });
+
+            contentHTML += `
+                    </div>
+                </div>
+            `;
+        }
+
+        // 반납한 책 이력
+        if (history.history.length > 0) {
+            contentHTML += `
+                <div class="history-section">
+                    <h3>✅ 반납 완료 (${history.history.length}권)</h3>
+                    <div class="history-list">
+            `;
+
+            // 최근 반납 순으로 정렬
+            const sortedHistory = [...history.history].sort((a, b) => 
+                new Date(b.returnDate) - new Date(a.returnDate)
+            );
+
+            sortedHistory.forEach(loan => {
+                const book = this.library.getBook(loan.bookId);
+                if (!book) return; // 삭제된 책은 스킵
+
+                contentHTML += `
+                    <div class="history-item returned">
+                        <div class="history-book-title">
+                            ${book.title}
+                            <span class="history-book-id">${book.id}</span>
+                        </div>
+                        <div class="history-dates">
+                            📅 대출: ${this.formatDate(loan.loanDate)} ~ ${this.formatDate(loan.returnDate)}
+                        </div>
+                        <span class="history-status returned">✅ 반납 완료</span>
+                    </div>
+                `;
+            });
+
+            contentHTML += `
+                    </div>
+                </div>
+            `;
+        }
+
+        if (history.all.length === 0) {
+            contentHTML = '<p class="empty-state">아직 대출 이력이 없습니다.</p>';
+        }
+
+        document.getElementById('student-history-content').innerHTML = contentHTML;
+        document.getElementById('student-history-modal').style.display = 'block';
+    }
+
+    closeStudentHistoryModal() {
+        document.getElementById('student-history-modal').style.display = 'none';
     }
 
     closeModal() {
         document.getElementById('loan-modal').style.display = 'none';
         document.getElementById('loan-form').reset();
+        document.getElementById('student-history-alert').style.display = 'none';
         this.selectedBookForLoan = null;
     }
 
@@ -894,11 +1081,25 @@ class UIManager {
             return;
         }
 
+        // 중복 대출 체크
+        const borrowHistory = this.library.hasStudentBorrowedBook(studentId, this.selectedBookForLoan);
+        if (borrowHistory.current) {
+            this.showNotification('이미 대출 중인 책입니다!', 'error');
+            return;
+        }
+
         try {
             this.library.loanBook(this.selectedBookForLoan, studentId, days, note);
             this.closeModal();
             this.render();
-            this.showNotification('대출이 완료되었습니다.', 'success');
+            
+            const student = this.library.getStudent(studentId);
+            const book = this.library.getBook(this.selectedBookForLoan);
+            const message = borrowHistory.history 
+                ? `대출이 완료되었습니다.\n(${student.name} 학생이 이 책을 재대출했습니다)`
+                : '대출이 완료되었습니다.';
+            
+            this.showNotification(message, 'success');
         } catch (error) {
             this.showNotification(error.message, 'error');
         }
