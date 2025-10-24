@@ -120,6 +120,24 @@ class LibraryManager {
         return this.students.find(s => s.id === studentId);
     }
 
+    addStudentsBulk(studentsData) {
+        const results = {
+            success: [],
+            failed: []
+        };
+
+        studentsData.forEach(data => {
+            try {
+                const student = this.addStudent(data);
+                results.success.push(student);
+            } catch (error) {
+                results.failed.push({ data, error: error.message });
+            }
+        });
+
+        return results;
+    }
+
     // 대출 관리
     loanBook(bookId, studentId, days = 14, note = '') {
         const book = this.getBook(bookId);
@@ -356,6 +374,38 @@ class UIManager {
         document.getElementById('student-form').addEventListener('submit', (e) => {
             e.preventDefault();
             this.handleAddStudent();
+        });
+
+        // 일괄 등록 탭 전환
+        document.querySelectorAll('.bulk-tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.bulk-tab-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                document.querySelectorAll('.bulk-tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`bulk-${e.target.dataset.bulkTab}-tab`).classList.add('active');
+            });
+        });
+
+        // 일괄 학생 등록 (텍스트)
+        document.getElementById('bulk-student-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleBulkAddStudents();
+        });
+
+        // CSV 파일 선택
+        document.getElementById('csv-upload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('csv-filename').textContent = file.name;
+            }
+        });
+
+        // CSV 일괄 등록
+        document.getElementById('csv-upload-btn').addEventListener('click', () => {
+            this.handleCSVUpload();
         });
 
         // 대출 폼
@@ -649,6 +699,149 @@ class UIManager {
         } catch (error) {
             this.showNotification(error.message, 'error');
         }
+    }
+
+    handleBulkAddStudents() {
+        const text = document.getElementById('bulk-student-text').value.trim();
+        if (!text) {
+            this.showNotification('학생 목록을 입력해주세요.', 'error');
+            return;
+        }
+
+        const studentsData = this.parseStudentText(text);
+        if (studentsData.length === 0) {
+            this.showNotification('올바른 형식의 학생 정보가 없습니다.', 'error');
+            return;
+        }
+
+        const results = this.library.addStudentsBulk(studentsData);
+        
+        let message = `총 ${studentsData.length}명 중 ${results.success.length}명 등록 완료!`;
+        if (results.failed.length > 0) {
+            message += `\n실패: ${results.failed.length}명`;
+        }
+
+        document.getElementById('bulk-student-text').value = '';
+        this.render();
+        this.showNotification(message, results.failed.length === 0 ? 'success' : 'warning');
+    }
+
+    parseStudentText(text) {
+        const lines = text.split('\n').filter(line => line.trim());
+        const students = [];
+
+        lines.forEach(line => {
+            line = line.trim();
+            if (!line) return;
+
+            // 탭이나 여러 공백으로 구분
+            const parts = line.split(/[\t\s]+/);
+            
+            if (parts.length === 1) {
+                // 이름만 있는 경우
+                students.push({
+                    number: null,
+                    name: parts[0]
+                });
+            } else if (parts.length >= 2) {
+                // 번호와 이름이 있는 경우
+                const firstPart = parts[0];
+                const isNumber = /^\d+$/.test(firstPart);
+                
+                if (isNumber) {
+                    students.push({
+                        number: parseInt(firstPart),
+                        name: parts.slice(1).join(' ')
+                    });
+                } else {
+                    // 첫 부분이 숫자가 아니면 전체를 이름으로
+                    students.push({
+                        number: null,
+                        name: parts.join(' ')
+                    });
+                }
+            }
+        });
+
+        return students;
+    }
+
+    handleCSVUpload() {
+        const fileInput = document.getElementById('csv-upload');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            this.showNotification('파일을 선택해주세요.', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const text = e.target.result;
+                const studentsData = this.parseCSV(text);
+                
+                if (studentsData.length === 0) {
+                    this.showNotification('올바른 형식의 학생 정보가 없습니다.', 'error');
+                    return;
+                }
+
+                const results = this.library.addStudentsBulk(studentsData);
+                
+                let message = `총 ${studentsData.length}명 중 ${results.success.length}명 등록 완료!`;
+                if (results.failed.length > 0) {
+                    message += `\n실패: ${results.failed.length}명`;
+                }
+
+                fileInput.value = '';
+                document.getElementById('csv-filename').textContent = '파일을 선택하세요';
+                this.render();
+                this.showNotification(message, results.failed.length === 0 ? 'success' : 'warning');
+            } catch (error) {
+                this.showNotification('파일을 읽는 중 오류가 발생했습니다.', 'error');
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+    }
+
+    parseCSV(text) {
+        const lines = text.split('\n').filter(line => line.trim());
+        const students = [];
+
+        lines.forEach(line => {
+            line = line.trim();
+            if (!line) return;
+
+            // CSV는 쉼표로 구분
+            const parts = line.split(',').map(p => p.trim());
+            
+            if (parts.length === 1) {
+                // 이름만 있는 경우
+                students.push({
+                    number: null,
+                    name: parts[0]
+                });
+            } else if (parts.length >= 2) {
+                // 번호와 이름이 있는 경우
+                const firstPart = parts[0];
+                const isNumber = /^\d+$/.test(firstPart);
+                
+                if (isNumber) {
+                    students.push({
+                        number: parseInt(firstPart),
+                        name: parts[1]
+                    });
+                } else {
+                    // 첫 부분이 숫자가 아니면 전체를 이름으로
+                    students.push({
+                        number: null,
+                        name: parts.join(' ')
+                    });
+                }
+            }
+        });
+
+        return students;
     }
 
     handleDeleteStudent(studentId) {

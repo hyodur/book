@@ -119,6 +119,63 @@
             </div>
 
             <div class="section">
+                <h2>📋 학생 일괄 등록</h2>
+                <div class="bulk-register-tabs">
+                    <button class="bulk-tab-btn active" data-bulk-tab="text">텍스트 입력</button>
+                    <button class="bulk-tab-btn" data-bulk-tab="csv">CSV 업로드</button>
+                </div>
+
+                <!-- 텍스트 일괄 등록 -->
+                <div class="bulk-tab-content active" id="bulk-text-tab">
+                    <form id="bulk-student-form" class="form">
+                        <div class="form-group">
+                            <label for="bulk-student-text">학생 목록 (한 줄에 한 명씩)</label>
+                            <textarea id="bulk-student-text" placeholder="1 홍길동
+2 김철수
+3 이영희
+또는
+홍길동
+김철수
+이영희
+
+(번호는 선택사항, 없으면 자동 부여)" rows="10"></textarea>
+                            <small>💡 "번호 이름" 또는 "이름"만 입력하세요. 탭이나 공백으로 구분됩니다.</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">일괄 등록</button>
+                    </form>
+                </div>
+
+                <!-- CSV 일괄 등록 -->
+                <div class="bulk-tab-content" id="bulk-csv-tab">
+                    <div class="form">
+                        <div class="form-group">
+                            <label>CSV 파일 업로드</label>
+                            <div class="file-upload-box">
+                                <input type="file" id="csv-upload" accept=".csv,.txt" style="display: none;">
+                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('csv-upload').click()">
+                                    📁 CSV 파일 선택
+                                </button>
+                                <span id="csv-filename" class="file-name">파일을 선택하세요</span>
+                            </div>
+                            <small>💡 CSV 형식: 번호,이름 (예: 1,홍길동) 또는 이름만 입력</small>
+                        </div>
+                        <button type="button" id="csv-upload-btn" class="btn btn-primary">일괄 등록</button>
+                        
+                        <div class="csv-example">
+                            <h4>📄 CSV 예제</h4>
+                            <pre>1,홍길동
+2,김철수
+3,이영희</pre>
+                            <p>또는 번호 없이:</p>
+                            <pre>홍길동
+김철수
+이영희</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
                 <h2>👥 학생 목록</h2>
                 <div id="students-list" class="table-container">
                     <table class="students-table">
