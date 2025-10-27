@@ -947,12 +947,15 @@ class UIManager {
                 `<option value="${student.id}">${student.number}번 ${student.name}</option>`
             ).join('');
 
-        // 학생 선택 이벤트 리스너 (새로운 요소에 추가)
-        newStudentSelect.addEventListener('change', (e) => {
-            const selectedId = e.target.value;
+        // 학생 선택 이벤트 리스너 (화살표 함수 대신 일반 함수로)
+        const self = this;
+        newStudentSelect.onchange = function() {
+            const selectedId = this.value;
             console.log('[드롭다운 변경] 선택된 ID:', selectedId);
-            this.checkStudentBookHistory(selectedId, bookId);
-        });
+            console.log('[드롭다운 변경] this.selectedIndex:', this.selectedIndex);
+            console.log('[드롭다운 변경] 선택된 옵션:', this.options[this.selectedIndex].text);
+            self.checkStudentBookHistory(selectedId, bookId);
+        };
 
         // required 속성 복원
         newStudentSelect.required = true;
