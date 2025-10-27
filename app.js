@@ -930,36 +930,52 @@ class UIManager {
         alertBox.style.display = 'none';
         alertBox.innerHTML = '';
 
-        // 학생 목록 채우기
-        const studentSelect = document.getElementById('loan-student');
+        // 학생 목록 채우기 - 완전히 새로 생성
+        const studentSelectContainer = document.getElementById('loan-student').parentElement;
         
-        // 기존 이벤트 리스너 제거를 위해 복제본으로 교체
-        const newStudentSelect = studentSelect.cloneNode(false);
-        studentSelect.parentNode.replaceChild(newStudentSelect, studentSelect);
+        // 기존 select 완전 제거
+        const oldSelect = document.getElementById('loan-student');
+        if (oldSelect) {
+            oldSelect.remove();
+        }
         
         // 학생 목록을 번호순으로 정렬
         const sortedStudents = [...this.library.students].sort((a, b) => a.number - b.number);
         
         console.log('[모달 열기] 학생 목록:', sortedStudents.map(s => `${s.number}번 ${s.name}`));
         
-        newStudentSelect.innerHTML = '<option value="">학생을 선택하세요</option>' +
-            sortedStudents.map(student => 
-                `<option value="${student.id}">${student.number}번 ${student.name}</option>`
-            ).join('');
+        // 완전히 새로운 select 요소 생성
+        const newStudentSelect = document.createElement('select');
+        newStudentSelect.id = 'loan-student';
+        newStudentSelect.required = true;
+        
+        // 옵션들 추가
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = '학생을 선택하세요';
+        newStudentSelect.appendChild(defaultOption);
+        
+        sortedStudents.forEach(student => {
+            const option = document.createElement('option');
+            option.value = student.id;
+            option.textContent = `${student.number}번 ${student.name}`;
+            newStudentSelect.appendChild(option);
+        });
 
-        // 학생 선택 이벤트 리스너 (화살표 함수 대신 일반 함수로)
+        // onchange를 HTML 속성으로 직접 설정
         const self = this;
-        newStudentSelect.onchange = function() {
-            const selectedId = this.value;
-            console.log('[드롭다운 변경] 선택된 ID:', selectedId);
-            console.log('[드롭다운 변경] this.selectedIndex:', this.selectedIndex);
-            console.log('[드롭다운 변경] 선택된 옵션:', this.options[this.selectedIndex].text);
+        newStudentSelect.onchange = function(event) {
+            const selectedId = event.target.value;
+            const selectedOption = event.target.options[event.target.selectedIndex];
+            console.log('[드롭다운 변경!!!] 선택된 ID:', selectedId);
+            console.log('[드롭다운 변경!!!] selectedIndex:', event.target.selectedIndex);
+            console.log('[드롭다운 변경!!!] 선택된 옵션 텍스트:', selectedOption.text);
+            console.log('[드롭다운 변경!!!] bookId:', bookId);
             self.checkStudentBookHistory(selectedId, bookId);
         };
-
-        // required 속성 복원
-        newStudentSelect.required = true;
-        newStudentSelect.id = 'loan-student';
+        
+        // DOM에 추가
+        studentSelectContainer.appendChild(newStudentSelect);
 
         // 모달 표시
         document.getElementById('loan-modal').style.display = 'block';
