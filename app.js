@@ -87,8 +87,11 @@ class LibraryManager {
 
     // 학생 관리
     addStudent(studentData) {
+        // 고유 ID 생성 - Date.now() + 랜덤 숫자로 중복 방지
+        const uniqueId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+        
         const student = {
-            id: Date.now().toString(),
+            id: uniqueId,
             number: studentData.number || this.generateStudentNumber(),
             name: studentData.name,
             addedDate: new Date().toISOString()
